@@ -1,0 +1,63 @@
+Select Top (1000000) tsysOS.Image As icon,
+  tblAssets.AssetID,
+  tblAssets.AssetName,
+  tblAssets.IPAddress,
+  tblADComputers.Description As ADDescription,
+  tblDiskdrives.Caption As [Drive/Filesystem],
+  Cast(tblDiskdrives.Size / 1024 / 1024 / 1024 As numeric) As TotalSizeGB,
+  Cast(tblDiskdrives.Freespace / 1024 / 1024 / 1024 As numeric) As FreeGB,
+  Ceiling(tblDiskdrives.Freespace / (Case tblDiskdrives.Size
+    When 0 Then 1
+    Else tblDiskdrives.Size
+  End) * 100) As [%SpaceLeft],
+  Case
+    When Ceiling(tblDiskdrives.Freespace / (Case tblDiskdrives.Size
+        When 0 Then 1
+        Else tblDiskdrives.Size
+      End) * 100) Between 0 And 50 Then '#f7dfdf'
+    When Ceiling(tblDiskdrives.Freespace / (Case tblDiskdrives.Size
+        When 0 Then 1
+        Else tblDiskdrives.Size
+      End) * 100) Between 51 And 75 Then '#f7f6df'
+    When Ceiling(tblDiskdrives.Freespace / (Case tblDiskdrives.Size
+        When 0 Then 1
+        Else tblDiskdrives.Size
+      End) * 100) Between 76 And 100 Then '#dff7df'
+  End As backgroundcolor,
+  Cast(tblAssets.Memory / 1024 As numeric) As MemoryGB,
+  tblAssets.Processor,
+  tblOperatingsystem.Caption As OS,
+  tblAssetCustom.Model,
+  tblHyperVGuest.Name As VMGuest,
+  (Case
+    When tblHyperVGuest.Enabledstate = 0 Then 'Unknown'
+    When tblHyperVGuest.Enabledstate = 2 Then 'Running'
+    When tblHyperVGuest.Enabledstate = 3 Then 'Off'
+    When tblHyperVGuest.Enabledstate = 6 Then 'Saved'
+    When tblHyperVGuest.Enabledstate = 32768 Then 'Paused'
+    When tblHyperVGuest.Enabledstate = 32769 Then 'Suspended'
+    When tblHyperVGuest.Enabledstate = 32770 Then 'Starting'
+    When tblHyperVGuest.Enabledstate = 32771 Then 'Snapshotting'
+    When tblHyperVGuest.Enabledstate = 32773 Then 'Saving'
+    When tblHyperVGuest.Enabledstate = 32774 Then 'Stopping'
+    When tblHyperVGuest.Enabledstate = 32776 Then 'Pausing'
+    When tblHyperVGuest.Enabledstate = 32777 Then 'Resuming'
+    Else 'Undocumented'
+  End) As VMState,
+  tblHyperVGuest.Healthstate As VMHealth,
+  Cast(tblHyperVGuest.Memory / 1024 As numeric) As VMMemoryGB,
+  tblHyperVGuest.Lastchanged,
+  tblAssetCustom.Location,
+  tblAssets.Firstseen As [Created at],
+  tblAssets.Lastseen As [Last successful scan]
+From tblAssets
+  Inner Join tblHyperVGuest On tblAssets.AssetID = tblHyperVGuest.AssetID
+  Inner Join tsysOS On tblAssets.OScode = tsysOS.OScode
+  Inner Join tblAssetCustom On tblAssets.AssetID = tblAssetCustom.AssetID
+  Left Outer Join tsysIPLocations On tblAssets.LocationID =
+      tsysIPLocations.LocationID
+  Inner Join tblOperatingsystem On
+      tblAssets.AssetID = tblOperatingsystem.AssetID
+  Inner Join tblDiskdrives On tblAssets.AssetID = tblDiskdrives.AssetID
+  Inner Join tblADComputers On tblAssets.AssetID = tblADComputers.AssetID
+Order By tblAssets.AssetName
